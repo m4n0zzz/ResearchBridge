@@ -23,8 +23,10 @@ Potential overlap is always presented as a review signal. It is never described 
 
 Use Python 3.11–3.13 (3.12 recommended).
 
+> **Do not open `static/index.html` directly.** ResearchBridge must be opened through the local server so its stylesheet, JavaScript, and API routes load correctly.
+
 ```powershell
-python -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
 ```
