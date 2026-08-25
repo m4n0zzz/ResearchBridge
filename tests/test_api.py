@@ -6,7 +6,10 @@ from conftest import FakeAI
 
 def test_root_supports_get_and_head(settings):
     client = TestClient(create_app(settings))
-    assert client.get("/").status_code == 200
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store, max-age=0"
+    assert "styles.css?v=" in response.text
     assert client.head("/").status_code == 200
 
 

@@ -5,8 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Evidence-backed university research knowledge graph">
   <title>ResearchBridge — Evidence-backed research discovery</title>
-  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/static/styles.css">
+  <script>
+    if (window.location.protocol === "file:") {
+      window.location.replace("https://researchbridge-promptwars.onrender.com/");
+    }
+  </script>
+  <link rel="icon" href="/static/favicon.svg?v=20260825-3" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css?v=20260825-3">
 </head>
 <body>
   <a class="skip-link" href="#workspace">Skip to research workspace</a>
@@ -152,6 +157,6 @@
     <div id="drawer-content"></div>
   </aside>
 
-  <script src="/static/app.js" defer></script>
+  <script src="/static/app.js?v=20260825-3" defer></script>
 </body>
 </html>

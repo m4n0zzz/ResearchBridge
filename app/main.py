@@ -40,7 +40,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
     def index():
-        return FileResponse(BASE_DIR / "static" / "index.html")
+        return FileResponse(
+            BASE_DIR / "static" / "index.html",
+            headers={"Cache-Control": "no-store, max-age=0"},
+        )
 
     @app.get("/api/health")
     def health():
