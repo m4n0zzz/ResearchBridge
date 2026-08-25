@@ -73,32 +73,30 @@ function renderStats() {
 function layoutNodes(nodes, edges, width, height) {
   const centerX = width / 2, centerY = height / 2;
   const positions = new Map();
-  nodes.forEach((node, index) => {
-    const angle = index * 2.399963;
-    const radiusBase = node.type === "TOPIC" ? 45 : node.type === "DOCUMENT" ? 125 : node.type === "RESEARCHER" || node.type === "DEPARTMENT" ? 205 : 170;
-    const wobble = (index % 4) * 12;
-    positions.set(node.id, { x: centerX + Math.cos(angle) * (radiusBase + wobble), y: centerY + Math.sin(angle) * (radiusBase + wobble), vx: 0, vy: 0 });
+  const degrees = new Map(nodes.map(node => [node.id, 0]));
+  edges.forEach(edge => {
+    if (degrees.has(edge.source_entity_id)) degrees.set(edge.source_entity_id, degrees.get(edge.source_entity_id) + 1);
+    if (degrees.has(edge.target_entity_id)) degrees.set(edge.target_entity_id, degrees.get(edge.target_entity_id) + 1);
   });
-  const edgeSet = edges.map(edge => [positions.get(edge.source_entity_id), positions.get(edge.target_entity_id)]).filter(pair => pair[0] && pair[1]);
-  for (let iteration = 0; iteration < 90; iteration += 1) {
-    for (let i = 0; i < nodes.length; i += 1) {
-      const a = positions.get(nodes[i].id);
-      a.vx += (centerX - a.x) * 0.0007; a.vy += (centerY - a.y) * 0.0007;
-      for (let j = i + 1; j < nodes.length; j += 1) {
-        const b = positions.get(nodes[j].id); let dx = b.x - a.x, dy = b.y - a.y;
-        const d2 = Math.max(100, dx * dx + dy * dy); const force = 190 / d2;
-        a.vx -= dx * force; a.vy -= dy * force; b.vx += dx * force; b.vy += dy * force;
-      }
-    }
-    for (const [a, b] of edgeSet) {
-      const dx = b.x - a.x, dy = b.y - a.y, distance = Math.sqrt(dx * dx + dy * dy) || 1;
-      const force = (distance - 105) * 0.0017;
-      a.vx += dx * force; a.vy += dy * force; b.vx -= dx * force; b.vy -= dy * force;
-    }
-    for (const point of positions.values()) {
-      point.vx *= .83; point.vy *= .83; point.x = Math.max(38, Math.min(width - 38, point.x + point.vx)); point.y = Math.max(35, Math.min(height - 55, point.y + point.vy));
-    }
-  }
+  const rings = [
+    { types: new Set(["TOPIC"]), x: .1, y: .1, offset: 0 },
+    { types: new Set(["METHOD", "DATASET", "SOFTWARE"]), x: .22, y: .2, offset: .35 },
+    { types: new Set(["DOCUMENT", "PUBLICATION"]), x: .34, y: .31, offset: -.2 },
+    { types: new Set(["RESEARCHER", "DEPARTMENT"]), x: .43, y: .4, offset: .15 },
+  ];
+  rings.forEach((ring, ringIndex) => {
+    const ringNodes = nodes
+      .filter(node => ring.types.has(node.type))
+      .sort((left, right) => (degrees.get(right.id) - degrees.get(left.id)) || left.display_name.localeCompare(right.display_name));
+    const radiusX = Math.min(width * ring.x, Math.max(45, width / 2 - 105));
+    const radiusY = Math.min(height * ring.y, Math.max(35, height / 2 - 62));
+    ringNodes.forEach((node, index) => {
+      const angle = -Math.PI / 2 + ring.offset + (2 * Math.PI * index / Math.max(1, ringNodes.length));
+      const x = ringIndex === 0 && ringNodes.length === 1 ? centerX : centerX + Math.cos(angle) * radiusX;
+      const y = ringIndex === 0 && ringNodes.length === 1 ? centerY : centerY + Math.sin(angle) * radiusY;
+      positions.set(node.id, { x, y });
+    });
+  });
   return positions;
 }
 
