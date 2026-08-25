@@ -80,4 +80,3 @@ def make_pdf(text: str) -> bytes:
     pdf.drawString(60, 740, text)
     pdf.save()
     return output.getvalue()
-

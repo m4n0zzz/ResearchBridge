@@ -25,4 +25,3 @@ Do not upload confidential, regulated, or export-controlled material without an 
 Before production deployment, add identity-aware authentication and tenant authorization, distributed rate limiting, malware scanning, encrypted object storage, retention/deletion policy, audit logging with redaction, asynchronous isolated parsers, and managed secret delivery. Disable synthetic demo mutation and API documentation outside development.
 
 Report vulnerabilities privately to the repository owner rather than opening an issue that contains exploit details or secrets.
-

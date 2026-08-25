@@ -41,4 +41,3 @@ def test_similar_topic_without_shared_method_or_dataset_is_not_overlap(store, se
         for entity in entities: store.link_document_entity(document, entity)
     insights = calculate_insights(store, settings)
     assert not [item for item in insights if item["insight_type"] == "POTENTIAL_OVERLAP"]
-
