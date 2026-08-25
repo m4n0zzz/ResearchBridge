@@ -6,7 +6,7 @@ from .config import get_settings
 def main() -> None:
     settings = get_settings()
     text = "Smoke Test Paper\nAsha Lee studies water-quality prediction using linear regression."
-    candidates = list(dict.fromkeys((settings.gemini_model, "gemini-2.5-flash-lite", "gemini-2.0-flash")))
+    candidates = list(dict.fromkeys((settings.gemini_model, "gemini-3.5-flash-lite", "gemini-3.6-flash")))
     failures = []
     for model in candidates:
         try:

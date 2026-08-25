@@ -47,7 +47,7 @@ After adding the server-side key:
 .\.venv\Scripts\python.exe -m app.smoke
 ```
 
-The command performs one real structured extraction and embedding request. It tries `GEMINI_MODEL` first (default `gemini-2.5-flash`) and then two Flash fallbacks, printing which model passed. No smoke-test content is persisted.
+The command performs one real structured extraction and embedding request. It tries `GEMINI_MODEL` first (verified default `gemini-3.5-flash-lite`) and then current Flash fallbacks, printing which model passed. No smoke-test content is persisted.
 
 ## Run tests
 

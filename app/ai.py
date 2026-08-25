@@ -18,6 +18,9 @@ The allowed entity types are DOCUMENT, RESEARCHER, DEPARTMENT, TOPIC, METHOD, DA
 Artifact filename: {filename}
 Artifact type: {artifact_type}
 
+Return one JSON object with this exact shape:
+{{"document":{{"title":"string","summary":"string"}},"entities":[{{"local_id":"string","type":"allowed entity type","name":"string","canonical_name":"string","description":"string","confidence":0.0,"evidence":[{{"quote":"verbatim source excerpt","location":"string"}}]}}],"relationships":[{{"source_local_id":"string","target_local_id":"string","type":"allowed relationship type","confidence":0.0,"evidence":[{{"quote":"verbatim source excerpt","location":"string"}}]}}]}}
+
 <UNTRUSTED_ARTIFACT>
 {content}
 </UNTRUSTED_ARTIFACT>"""
@@ -53,8 +56,12 @@ class GeminiProvider(AIProvider):
     def __init__(self, api_key: str | None, model: str, embedding_model: str):
         if not api_key:
             raise MissingAPIKeyError("GEMINI_API_KEY is not configured on the server.")
+        import truststore
         from google import genai
 
+        # Use the operating-system trust store without disabling TLS verification.
+        # This supports managed Windows environments whose trusted root is not in certifi.
+        truststore.inject_into_ssl()
         self.client = genai.Client(api_key=api_key)
         self.model = model
         self.embedding_model = embedding_model
@@ -70,7 +77,6 @@ class GeminiProvider(AIProvider):
                     system_instruction=SYSTEM_INSTRUCTION,
                     temperature=0,
                     response_mime_type="application/json",
-                    response_schema=ExtractedGraph,
                 ),
             )
             if getattr(response, "parsed", None):
