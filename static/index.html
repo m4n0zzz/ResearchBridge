@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Evidence-backed university research knowledge graph">
+  <title>ResearchBridge — Evidence-backed research discovery</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="ResearchBridge home"><span class="brand-mark">RB</span> ResearchBridge</a>
+    <div class="status"><span id="status-dot" class="status-dot"></span><span id="system-status">Checking system…</span></div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Evidence-backed knowledge graph</p>
+        <h1>Find the research connection<br>hiding in plain sight.</h1>
+        <p class="lede">ResearchBridge converts university papers and repositories into an evidence-backed knowledge graph that reveals cross-department collaboration opportunities and potentially overlapping research.</p>
+      </div>
+      <div class="hero-proof" aria-label="Core promise">
+        <span>Every connection includes</span>
+        <strong>Source evidence</strong>
+        <strong>Confidence</strong>
+        <strong>Provenance</strong>
+      </div>
+    </section>
+
+    <section class="workspace-grid">
+      <aside class="control-rail">
+        <section class="panel upload-panel">
+          <div class="section-heading"><span class="step">01</span><div><h2>Ingest research</h2><p>PDF · Markdown · Repository ZIP</p></div></div>
+          <label class="dropzone" id="dropzone" for="file-input">
+            <input id="file-input" type="file" multiple accept=".pdf,.md,.markdown,.zip">
+            <span class="upload-icon">↑</span>
+            <strong>Drop artifacts here</strong>
+            <span>or browse files · max 8</span>
+          </label>
+          <div id="file-list" class="file-list"></div>
+          <button id="ingest-button" class="button primary" disabled>Build knowledge graph</button>
+          <p id="upload-status" class="assistive" role="status" aria-live="polite"></p>
+          <div class="divider"><span>or</span></div>
+          <button id="demo-button" class="button secondary">Load synthetic demo data</button>
+          <p class="fine-print">Demo artifacts are clearly synthetic and generated locally.</p>
+        </section>
+
+        <section class="panel filters-panel">
+          <div class="section-heading"><span class="step">02</span><div><h2>Filter graph</h2><p>Focus the evidence map</p></div></div>
+          <div id="filters" class="filters"></div>
+        </section>
+      </aside>
+
+      <section class="main-stage">
+        <section class="search-panel panel">
+          <label for="query-input">Ask the graph</label>
+          <div class="search-row">
+            <input id="query-input" type="search" placeholder="Who could collaborate on crop-disease research?">
+            <button id="query-button" class="button primary">Search evidence</button>
+          </div>
+          <div id="query-result" class="query-result" aria-live="polite"></div>
+        </section>
+
+        <section class="panel graph-panel">
+          <div class="panel-title-row">
+            <div><p class="eyebrow">Live graph</p><h2>Research evidence map</h2></div>
+            <div id="stats" class="stats"></div>
+          </div>
+          <div id="empty-state" class="empty-state">
+            <div class="empty-orbit"><span></span><span></span><span></span></div>
+            <h3>Your research graph starts here</h3>
+            <p>Upload artifacts or load the four synthetic demonstrations to reveal evidence-backed connections.</p>
+            <button class="button primary demo-trigger">Load synthetic demo data</button>
+          </div>
+          <div id="graph-wrap" class="graph-wrap" hidden>
+            <svg id="graph" role="group" aria-label="Interactive research knowledge graph"></svg>
+            <div id="legend" class="legend"></div>
+          </div>
+        </section>
+
+        <section class="radars">
+          <section class="panel radar-card collaboration">
+            <div class="radar-heading"><span class="radar-icon">↗</span><div><p class="eyebrow">Collaboration Radar</p><h2>Complementary strengths</h2></div></div>
+            <div id="collaboration-list" class="insight-list"><p class="muted">No opportunities yet.</p></div>
+          </section>
+          <section class="panel radar-card overlap">
+            <div class="radar-heading"><span class="radar-icon">≈</span><div><p class="eyebrow">Overlap Radar</p><h2>Review signals</h2></div></div>
+            <div id="overlap-list" class="insight-list"><p class="muted">No review signals yet.</p></div>
+          </section>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
+  <aside id="detail-drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-hidden="true" inert>
+    <button id="drawer-close" class="icon-button" aria-label="Close evidence details">×</button>
+    <p id="drawer-type" class="eyebrow">Evidence detail</p>
+    <h2 id="drawer-title">Select a node or connection</h2>
+    <div id="drawer-content"></div>
+  </aside>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

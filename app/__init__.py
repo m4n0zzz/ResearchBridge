@@ -1,0 +1,2 @@
+"""ResearchBridge application package."""
+
