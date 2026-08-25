@@ -4,6 +4,12 @@ from app.main import create_app
 from conftest import FakeAI
 
 
+def test_root_supports_get_and_head(settings):
+    client = TestClient(create_app(settings))
+    assert client.get("/").status_code == 200
+    assert client.head("/").status_code == 200
+
+
 def test_health_and_demo_critical_flow(settings):
     client = TestClient(create_app(settings))
     health = client.get("/api/health")

@@ -16,6 +16,7 @@ const pct = (value) => `${Math.round(Number(value) * 100)}%`;
 
 function setupFilters() {
   const container = $("#filters");
+  container.replaceChildren();
   for (const [type, meta] of Object.entries(TYPES)) {
     const label = document.createElement("label");
     label.className = "filter";
@@ -33,16 +34,23 @@ async function api(url, options = {}) {
   const response = await fetch(url, options);
   let payload;
   try { payload = await response.json(); } catch { payload = { detail: "The server returned an unreadable response." }; }
-  if (!response.ok) throw new Error(payload.detail || `Request failed (${response.status})`);
+  if (!response.ok) {
+    const detail = Array.isArray(payload.detail)
+      ? payload.detail.map(item => item.msg || String(item)).join(" · ")
+      : payload.detail;
+    throw new Error(detail || `Request failed (${response.status})`);
+  }
   return payload;
 }
 
 async function checkHealth() {
+  const dot = $("#status-dot");
   try {
     const data = await api("/api/health");
-    $("#status-dot").classList.add("ready");
+    dot.classList.remove("error"); dot.classList.add("ready");
     $("#system-status").textContent = data.ai_configured ? `Gemini ready · ${data.ai_model}` : "Local demo ready · Gemini key not set";
   } catch {
+    dot.classList.remove("ready"); dot.classList.add("error");
     $("#system-status").textContent = "Server unavailable";
   }
 }
@@ -111,6 +119,9 @@ function renderGraph() {
   const nodes = state.data.nodes.filter(node => state.activeTypes.has(node.type));
   const ids = new Set(nodes.map(node => node.id));
   const edges = state.data.edges.filter(edge => ids.has(edge.source_entity_id) && ids.has(edge.target_entity_id));
+  $("#filter-empty").hidden = nodes.length > 0;
+  $("#legend").hidden = nodes.length === 0;
+  if (!nodes.length) return;
   const positions = layoutNodes(nodes, edges, width, height);
   const nodeById = new Map(nodes.map(node => [node.id, node]));
   const edgeLayer = svgElement("g"), nodeLayer = svgElement("g"); svg.append(edgeLayer, nodeLayer);
@@ -185,43 +196,74 @@ function closeDrawer() {
 }
 
 function showStatus(message, error = false) {
-  const target = $("#upload-status"); target.textContent = message; target.classList.toggle("error", error);
+  const target = $("#upload-status");
+  target.textContent = message;
+  target.classList.remove("error", "success", "warning");
+  if (error === true || error === "error") target.classList.add("error");
+  else if (error === "success") target.classList.add("success");
+  else if (error === "warning") target.classList.add("warning");
+}
+
+function renderFiles() {
+  const container = $("#file-list");
+  container.replaceChildren(...state.files.map((file, index) => {
+    const chip = document.createElement("div"); chip.className = "file-chip";
+    chip.innerHTML = `<strong title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</strong><span>${(file.size / 1024).toFixed(0)} KB</span><button class="file-remove" type="button" aria-label="Remove ${escapeHtml(file.name)}">×</button>`;
+    chip.querySelector("button").addEventListener("click", () => {
+      state.files.splice(index, 1);
+      renderFiles();
+    });
+    return chip;
+  }));
+  if (!state.files.length) $("#file-input").value = "";
+  $("#ingest-button").disabled = !state.files.length;
 }
 
 function setFiles(fileList) {
   state.files = [...fileList].slice(0, 8);
-  $("#file-list").innerHTML = state.files.map(file => `<div class="file-chip"><strong>${escapeHtml(file.name)}</strong><span>${(file.size / 1024).toFixed(0)} KB</span></div>`).join("");
-  $("#ingest-button").disabled = !state.files.length;
+  renderFiles();
+  showStatus("");
+}
+
+function setButtonLoading(button, loading, label) {
+  button.classList.toggle("loading", loading);
+  button.disabled = loading;
+  button.setAttribute("aria-busy", String(loading));
+  if (label) button.textContent = label;
 }
 
 async function ingestFiles() {
-  const button = $("#ingest-button"); button.disabled = true; button.textContent = "Extracting evidence…"; showStatus("Gemini is validating entities, relationships, and evidence.");
+  const button = $("#ingest-button"); setButtonLoading(button, true, "Extracting evidence…"); showStatus("Gemini is validating entities, relationships, and evidence.");
   const form = new FormData(); state.files.forEach(file => form.append("files", file));
   try {
     const result = await api("/api/ingest", { method: "POST", body: form });
     const failures = result.results.filter(item => item.status === "error");
-    showStatus(failures.length ? failures.map(item => `${item.filename}: ${item.error}`).join(" · ") : `${result.results.length} artifact(s) ingested. Graph refreshed.`, Boolean(failures.length));
+    const failedNames = new Set(failures.map(item => item.filename));
+    state.files = state.files.filter(file => failedNames.has(file.name));
+    renderFiles();
+    if (failures.length) showStatus(failures.map(item => `${item.filename}: ${item.error}`).join(" · "), "warning");
+    else showStatus(`${result.results.length} artifact(s) ingested. Graph refreshed.`, "success");
     await refreshGraph();
   } catch (error) { showStatus(error.message, true); }
-  finally { button.textContent = "Build knowledge graph"; button.disabled = !state.files.length; }
+  finally { setButtonLoading(button, false, "Build knowledge graph"); button.disabled = !state.files.length; }
 }
 
 async function loadDemo(event) {
-  const button = event?.currentTarget; if (button) { button.disabled = true; button.textContent = "Loading synthetic artifacts…"; }
+  const button = event?.currentTarget; if (button) setButtonLoading(button, true, "Loading synthetic artifacts…");
   showStatus("Parsing four synthetic PDF, Markdown, and repository artifacts…");
-  try { const result = await api("/api/demo/load", { method: "POST" }); showStatus(`${result.message} ${result.stats.insights} evidence-backed insights found.`); await refreshGraph(); }
+  try { const result = await api("/api/demo/load", { method: "POST" }); showStatus(`${result.message} ${result.stats.insights} evidence-backed insights found.`, "success"); await refreshGraph(); }
   catch (error) { showStatus(error.message, true); }
-  finally { if (button) { button.disabled = false; button.textContent = "Load synthetic demo data"; } }
+  finally { if (button) setButtonLoading(button, false, "Load synthetic demo data"); }
 }
 
 async function runQuery() {
   const question = $("#query-input").value.trim(); if (question.length < 3) return;
-  const button = $("#query-button"); button.disabled = true; button.textContent = "Retrieving…"; $("#query-result").innerHTML = `<p class="muted">Searching vectors, graph paths, and evidence…</p>`;
+  const button = $("#query-button"); setButtonLoading(button, true, "Retrieving…"); $("#query-result").innerHTML = `<p class="muted">Searching vectors, graph paths, and evidence…</p>`;
   try {
     const result = await api("/api/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }) });
     $("#query-result").innerHTML = `<div class="query-card"><strong>Evidence-backed answer</strong><p>${escapeHtml(result.answer)}</p>${result.caveats.map(item => `<p class="caveat">${escapeHtml(item)}</p>`).join("")}</div>`;
   } catch (error) { $("#query-result").innerHTML = `<p class="assistive error">${escapeHtml(error.message)}</p>`; }
-  finally { button.disabled = false; button.textContent = "Search evidence"; }
+  finally { setButtonLoading(button, false, "Search evidence"); button.disabled = $("#query-input").value.trim().length < 3; }
 }
 
 function bindEvents() {
@@ -235,6 +277,12 @@ function bindEvents() {
   document.querySelectorAll(".demo-trigger").forEach(button => button.addEventListener("click", loadDemo));
   $("#query-button").addEventListener("click", runQuery);
   $("#query-input").addEventListener("keydown", event => { if (event.key === "Enter") runQuery(); });
+  $("#query-input").addEventListener("input", event => { $("#query-button").disabled = event.target.value.trim().length < 3; });
+  document.querySelectorAll("[data-question]").forEach(button => button.addEventListener("click", () => {
+    $("#query-input").value = button.dataset.question;
+    $("#query-button").disabled = false;
+    $("#query-input").focus();
+  }));
   $("#drawer-close").addEventListener("click", closeDrawer); $("#drawer-backdrop").addEventListener("click", closeDrawer);
   document.addEventListener("keydown", event => {
     const drawer = $("#detail-drawer");

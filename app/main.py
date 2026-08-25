@@ -38,7 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def provider() -> GeminiProvider:
         return GeminiProvider(settings.gemini_api_key, settings.gemini_model, settings.gemini_embedding_model)
 
-    @app.get("/", include_in_schema=False)
+    @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
     def index():
         return FileResponse(BASE_DIR / "static" / "index.html")
 

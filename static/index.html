@@ -9,35 +9,66 @@
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
+  <a class="skip-link" href="#workspace">Skip to research workspace</a>
   <header class="topbar">
-    <a class="brand" href="#" aria-label="ResearchBridge home"><span class="brand-mark">RB</span> ResearchBridge</a>
-    <div class="status"><span id="status-dot" class="status-dot"></span><span id="system-status">Checking system…</span></div>
+    <div class="topbar-inner">
+      <a class="brand" href="#" aria-label="ResearchBridge home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>Research<span>Bridge</span></span>
+      </a>
+      <nav class="topnav" aria-label="Primary navigation">
+        <a href="#workspace">Workspace</a>
+        <a href="#insights">Insights</a>
+      </nav>
+      <div class="status"><span id="status-dot" class="status-dot"></span><span id="system-status">Checking system…</span></div>
+    </div>
   </header>
 
   <main>
     <section class="hero">
-      <div>
-        <p class="eyebrow">Evidence-backed knowledge graph</p>
-        <h1>Find the research connection<br>hiding in plain sight.</h1>
-        <p class="lede">ResearchBridge converts university papers and repositories into an evidence-backed knowledge graph that reveals cross-department collaboration opportunities and potentially overlapping research.</p>
+      <div class="hero-copy">
+        <div class="hero-kicker"><span>Research intelligence</span><span>Evidence first</span></div>
+        <h1>Turn scattered research into connected evidence.</h1>
+        <p class="lede">ResearchBridge maps papers and repositories into a verifiable knowledge graph—revealing collaborators, shared datasets, and research overlap across departments.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#workspace">Explore the workspace</a>
+          <span>Every claim traces back to its source.</span>
+        </div>
       </div>
-      <div class="hero-proof" aria-label="Core promise">
-        <span>Every connection includes</span>
-        <strong>Source evidence</strong>
-        <strong>Confidence</strong>
-        <strong>Provenance</strong>
+      <div class="hero-visual" aria-label="ResearchBridge processing overview">
+        <div class="visual-topline"><span>Live evidence pipeline</span><span class="live-chip"><i></i> Grounded</span></div>
+        <div class="source-row" aria-hidden="true">
+          <span><b>PDF</b> Research paper</span>
+          <span><b>MD</b> Lab notes</span>
+          <span><b>ZIP</b> Repository</span>
+        </div>
+        <div class="bridge-line" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div class="visual-output">
+          <div><span class="output-icon">⌘</span><strong>Evidence graph</strong><small>Entities and relationships</small></div>
+          <ul>
+            <li><span>01</span> Verbatim source evidence</li>
+            <li><span>02</span> Confidence on every link</li>
+            <li><span>03</span> Collaboration and overlap signals</li>
+          </ul>
+        </div>
       </div>
     </section>
 
-    <section class="workspace-grid">
+    <section class="workspace-intro" id="workspace">
+      <div><p class="eyebrow">Research workspace</p><h2>Build and explore the evidence graph</h2></div>
+      <p>Ingest artifacts, focus the graph, and ask questions grounded only in the supplied research.</p>
+    </section>
+
+    <section class="workspace-grid" aria-label="Research graph workspace">
       <aside class="control-rail">
         <section class="panel upload-panel">
-          <div class="section-heading"><span class="step">01</span><div><h2>Ingest research</h2><p>PDF · Markdown · Repository ZIP</p></div></div>
+          <div class="section-heading"><span class="step">01</span><div><p class="section-label">Ingest</p><h2>Add research artifacts</h2></div></div>
           <label class="dropzone" id="dropzone" for="file-input">
             <input id="file-input" type="file" multiple accept=".pdf,.md,.markdown,.zip">
-            <span class="upload-icon">↑</span>
-            <strong>Drop artifacts here</strong>
-            <span>or browse files · max 8</span>
+            <span class="upload-icon" aria-hidden="true">↑</span>
+            <strong>Drop files or browse</strong>
+            <span>PDF, Markdown, or repository ZIP</span>
+            <small>Up to 8 files · 15 MB each</small>
           </label>
           <div id="file-list" class="file-list"></div>
           <button id="ingest-button" class="button primary" disabled>Build knowledge graph</button>
@@ -48,24 +79,34 @@
         </section>
 
         <section class="panel filters-panel">
-          <div class="section-heading"><span class="step">02</span><div><h2>Filter graph</h2><p>Focus the evidence map</p></div></div>
+          <div class="section-heading"><span class="step">02</span><div><p class="section-label">Scope</p><h2>Filter node types</h2></div></div>
           <div id="filters" class="filters"></div>
+          <p class="fine-print filter-note">Changes update the graph instantly.</p>
         </section>
       </aside>
 
       <section class="main-stage">
         <section class="search-panel panel">
-          <label for="query-input">Ask the graph</label>
+          <div class="search-heading">
+            <div><p class="section-label">Grounded retrieval</p><label for="query-input">Ask the research graph</label></div>
+            <span class="grounded-badge"><i></i> Evidence only</span>
+          </div>
           <div class="search-row">
             <input id="query-input" type="search" placeholder="Who could collaborate on crop-disease research?">
-            <button id="query-button" class="button primary">Search evidence</button>
+            <button id="query-button" class="button primary" disabled>Search evidence</button>
+          </div>
+          <div class="prompt-chips" aria-label="Suggested questions">
+            <span>Try:</span>
+            <button type="button" data-question="Who should collaborate and why?">Who should collaborate?</button>
+            <button type="button" data-question="Which studies use the same dataset?">Shared datasets</button>
+            <button type="button" data-question="Where is potentially overlapping research happening?">Potential overlap</button>
           </div>
           <div id="query-result" class="query-result" aria-live="polite"></div>
         </section>
 
         <section class="panel graph-panel">
           <div class="panel-title-row">
-            <div><p class="eyebrow">Live graph</p><h2>Research evidence map</h2></div>
+            <div><p class="section-label">Live graph</p><h2>Research evidence map</h2><small>Select a node or link to inspect its provenance.</small></div>
             <div id="stats" class="stats"></div>
           </div>
           <div id="empty-state" class="empty-state">
@@ -76,11 +117,14 @@
           </div>
           <div id="graph-wrap" class="graph-wrap" hidden>
             <svg id="graph" role="group" aria-label="Interactive research knowledge graph"></svg>
+            <div id="filter-empty" class="filter-empty" hidden>
+              <strong>No node types selected</strong><span>Enable at least one filter to display the graph.</span>
+            </div>
             <div id="legend" class="legend"></div>
           </div>
         </section>
 
-        <section class="radars">
+        <section class="radars" id="insights">
           <section class="panel radar-card collaboration">
             <div class="radar-heading"><span class="radar-icon">↗</span><div><p class="eyebrow">Collaboration Radar</p><h2>Complementary strengths</h2></div></div>
             <div id="collaboration-list" class="insight-list"><p class="muted">No opportunities yet.</p></div>
@@ -93,6 +137,12 @@
       </section>
     </section>
   </main>
+
+  <footer>
+    <span>ResearchBridge</span>
+    <p>Evidence-backed discovery for connected academic research.</p>
+    <span>Source · Confidence · Provenance</span>
+  </footer>
 
   <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
   <aside id="detail-drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-hidden="true" inert>
