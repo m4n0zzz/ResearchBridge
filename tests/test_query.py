@@ -1,5 +1,6 @@
 from app.ai import local_embedding
 from app.service import query_graph
+from conftest import FakeAI
 
 
 def test_query_evidence_is_restricted_to_vector_selected_documents(store):
@@ -26,3 +27,25 @@ def test_graph_api_does_not_expose_embeddings(store):
                                  description="Safe", confidence=1, embedding=[1.0, 0.0])
     assert entity_id
     assert all("embedding" not in node for node in store.graph()["nodes"])
+
+
+def test_uncited_ai_answer_falls_back_to_verified_excerpts(store):
+    document_id = store.add_document(
+        filename="field.md", artifact_type="markdown", content_hash="field", title="Field Study",
+        summary="Field evidence", raw_text="Field evidence", embedding=local_embedding("field evidence"),
+    )
+    entity_id = store.add_entity(
+        entity_type="DOCUMENT", canonical_name="field study", display_name="Field Study",
+        description="Field evidence", confidence=1, embedding=local_embedding("field evidence"),
+    )
+    store.link_document_entity(document_id, entity_id)
+    store.add_evidence(document_id=document_id, entity_id=entity_id,
+                       excerpt="Verified field evidence", location="body")
+
+    ai = FakeAI()
+    ai.answer = lambda question, evidence: "An answer without citations"
+    result = query_graph(store, "field evidence", ai)
+
+    assert "Verified evidence" in result["answer"]
+    assert "[E1]" in result["answer"]
+    assert "no uncited Gemini claims" in result["caveats"][0]
