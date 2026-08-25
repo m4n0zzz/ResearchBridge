@@ -290,6 +290,7 @@ function bindEvents() {
     $("#query-input").value = button.dataset.question;
     $("#query-button").disabled = false;
     $("#query-input").focus();
+    runQuery();
   }));
   $("#drawer-close").addEventListener("click", closeDrawer); $("#drawer-backdrop").addEventListener("click", closeDrawer);
   document.addEventListener("keydown", event => {

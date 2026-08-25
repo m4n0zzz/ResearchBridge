@@ -26,7 +26,18 @@ def test_health_and_demo_critical_flow(settings):
     assert graph["nodes"] and graph["edges"] and graph["insights"]
     query = client.post("/api/query", json={"question": "Who can collaborate on crop disease?"})
     assert query.status_code == 200
-    assert "local fallback" in query.json()["caveats"][0]
+    assert "strongest collaboration match" in query.json()["answer"]
+    assert "Deterministic answer" in query.json()["caveats"][0]
+
+    dataset_query = client.post("/api/query", json={"question": "Which studies use the FieldLeaf-2026 dataset?"})
+    assert dataset_query.status_code == 200
+    assert "shared by" in dataset_query.json()["answer"]
+    assert "FieldLeaf-2026" in dataset_query.json()["answer"]
+
+    overlap_query = client.post("/api/query", json={"question": "Which projects show potential research overlap, and why?"})
+    assert overlap_query.status_code == 200
+    assert "strongest review signal" in overlap_query.json()["answer"]
+    assert "not plagiarism or misconduct" in overlap_query.json()["answer"]
 
 
 def test_live_ingestion_requires_server_key(settings):

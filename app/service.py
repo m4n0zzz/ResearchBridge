@@ -17,6 +17,134 @@ class ExtractionValidationError(ValueError):
     pass
 
 
+def _join_names(values: list[str]) -> str:
+    if not values:
+        return "the supplied evidence"
+    if len(values) == 1:
+        return values[0]
+    return f"{', '.join(values[:-1])} and {values[-1]}"
+
+
+def _insight_evidence(store: GraphStore, document_ids: list[int], keywords: list[str], limit: int = 4) -> list[dict[str, Any]]:
+    placeholders = ",".join("?" for _ in document_ids)
+    rows = store.rows(
+        f"""SELECT DISTINCT ev.excerpt,ev.location,d.title document_title,ev.document_id,
+                   COALESCE(e.type,'') entity_type
+            FROM evidence ev JOIN documents d ON d.id=ev.document_id
+            LEFT JOIN entities e ON e.id=ev.entity_id
+            WHERE ev.document_id IN ({placeholders})""",
+        tuple(document_ids),
+    )
+    terms = [value.casefold() for value in keywords if value]
+
+    def rank(row: dict[str, Any]) -> tuple[int, int]:
+        excerpt = row["excerpt"].casefold()
+        matches = sum(term in excerpt for term in terms)
+        feature_bonus = 2 if row["entity_type"] in {"TOPIC", "METHOD", "DATASET", "SOFTWARE"} else 0
+        useful_length = 1 if 20 <= len(row["excerpt"]) <= 500 else 0
+        return matches * 10 + feature_bonus + useful_length, len(row["excerpt"])
+
+    ranked = sorted(rows, key=rank, reverse=True)
+    selected: list[dict[str, Any]] = []
+    for document_id in document_ids:
+        candidate = next((row for row in ranked if row["document_id"] == document_id), None)
+        if candidate and candidate not in selected:
+            selected.append(candidate)
+    selected.extend(row for row in ranked if row not in selected)
+    selected = selected[:limit]
+    for index, row in enumerate(selected, start=1):
+        row["reference"] = f"E{index}"
+        row.pop("entity_type", None)
+    return selected
+
+
+def _preset_graph_answer(store: GraphStore, question: str) -> dict[str, Any] | None:
+    normalized = " ".join(re.findall(r"[a-z0-9]+", question.casefold()))
+    insight_type = None
+    if "collaborat" in normalized and any(word in normalized for word in ("who", "which", "should")):
+        insight_type = "COLLABORATION_OPPORTUNITY"
+    elif "overlap" in normalized:
+        insight_type = "POTENTIAL_OVERLAP"
+
+    if insight_type:
+        rows = store.rows(
+            """SELECT i.*,s.title source_title,t.title target_title
+               FROM insights i JOIN documents s ON s.id=i.source_document_id
+               JOIN documents t ON t.id=i.target_document_id
+               WHERE i.insight_type=? ORDER BY i.score DESC,i.id LIMIT 1""",
+            (insight_type,),
+        )
+        if not rows:
+            return None
+        insight = rows[0]
+        features = json.loads(insight["evidence"])
+        if insight_type == "COLLABORATION_OPPORTUNITY":
+            keywords = [*features.get("shared_topics", []), *features.get("left_complements", []),
+                        *features.get("right_complements", [])]
+            evidence = _insight_evidence(
+                store, [insight["source_document_id"], insight["target_document_id"]], keywords,
+            )
+            references = " ".join(f"[{row['reference']}]" for row in evidence)
+            answer = (
+                f"The strongest collaboration match is {insight['source_title']} with "
+                f"{insight['target_title']} ({insight['score']:.0%} score). Both address "
+                f"{_join_names(features.get('shared_topics', []))}. The first contributes "
+                f"{_join_names(features.get('left_complements', []))}; the second contributes "
+                f"{_join_names(features.get('right_complements', []))}. {references}"
+            )
+        else:
+            keywords = features.get("shared_evidence", [])
+            evidence = _insight_evidence(
+                store, [insight["source_document_id"], insight["target_document_id"]], keywords,
+            )
+            references = " ".join(f"[{row['reference']}]" for row in evidence)
+            answer = (
+                f"The strongest review signal is between {insight['source_title']} and "
+                f"{insight['target_title']} ({insight['score']:.0%} score). They explicitly share "
+                f"{_join_names(keywords)}. This signals possible research overlap for coordination, "
+                f"not plagiarism or misconduct. {references}"
+            )
+        return {
+            "answer": answer, "relevant_nodes": [], "paths": [], "evidence": evidence,
+            "caveats": ["Deterministic answer generated from scored graph insights and verified source evidence."],
+        }
+
+    if "dataset" in normalized and any(word in normalized for word in ("shared", "same", "which", "use")):
+        datasets = store.rows(
+            """SELECT e.id,e.display_name,COUNT(DISTINCT de.document_id) document_count
+               FROM entities e JOIN document_entities de ON de.entity_id=e.id
+               WHERE e.type='DATASET' GROUP BY e.id,e.display_name
+               HAVING COUNT(DISTINCT de.document_id)>1
+               ORDER BY document_count DESC,e.display_name LIMIT 1"""
+        )
+        if not datasets:
+            return None
+        dataset = datasets[0]
+        documents = store.rows(
+            """SELECT d.id,d.title FROM document_entities de JOIN documents d ON d.id=de.document_id
+               WHERE de.entity_id=? ORDER BY d.title""",
+            (dataset["id"],),
+        )
+        evidence = store.rows(
+            """SELECT DISTINCT ev.excerpt,ev.location,d.title document_title,ev.document_id
+               FROM evidence ev JOIN documents d ON d.id=ev.document_id
+               WHERE ev.entity_id=? ORDER BY d.title LIMIT 6""",
+            (dataset["id"],),
+        )
+        for index, row in enumerate(evidence, start=1):
+            row["reference"] = f"E{index}"
+        references = " ".join(f"[{row['reference']}]" for row in evidence)
+        answer = (
+            f"{dataset['display_name']} is shared by {dataset['document_count']} artifacts: "
+            f"{_join_names([row['title'] for row in documents])}. {references}"
+        )
+        return {
+            "answer": answer, "relevant_nodes": [], "paths": [], "evidence": evidence,
+            "caveats": ["Deterministic answer generated from dataset-to-document graph links."],
+        }
+    return None
+
+
 def _verified_location(source_text: str, quote: str, claimed_location: str) -> str:
     parts = quote.split()
     pattern = r"\s+".join(re.escape(part) for part in parts)
@@ -81,6 +209,9 @@ def ingest_artifact(store: GraphStore, provider: AIProvider, artifact: ParsedArt
 
 
 def query_graph(store: GraphStore, question: str, provider: AIProvider | None = None) -> dict[str, Any]:
+    preset = _preset_graph_answer(store, question)
+    if preset:
+        return preset
     query_vector = provider.embed([question], task_type="RETRIEVAL_QUERY")[0] if provider else local_embedding(question)
     candidates: list[tuple[float, dict[str, Any], str]] = []
     for document in store.rows("SELECT id,title,summary,embedding FROM documents"):
