@@ -31,16 +31,26 @@ function setupFilters() {
 }
 
 async function api(url, options = {}) {
-  const response = await fetch(url, options);
-  let payload;
-  try { payload = await response.json(); } catch { payload = { detail: "The server returned an unreadable response." }; }
-  if (!response.ok) {
-    const detail = Array.isArray(payload.detail)
-      ? payload.detail.map(item => item.msg || String(item)).join(" · ")
-      : payload.detail;
-    throw new Error(detail || `Request failed (${response.status})`);
+  const { timeoutMs = 70_000, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...fetchOptions, signal: controller.signal });
+    let payload;
+    try { payload = await response.json(); } catch { payload = { detail: "The server returned an unreadable response." }; }
+    if (!response.ok) {
+      const detail = Array.isArray(payload.detail)
+        ? payload.detail.map(item => item.msg || String(item)).join(" · ")
+        : payload.detail;
+      throw new Error(detail || `Request failed (${response.status})`);
+    }
+    return payload;
+  } catch (error) {
+    if (error.name === "AbortError") throw new Error("The request took too long. Please try again.");
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
   }
-  return payload;
 }
 
 async function checkHealth() {
@@ -234,7 +244,7 @@ async function ingestFiles() {
   const button = $("#ingest-button"); setButtonLoading(button, true, "Extracting evidence…"); showStatus("Gemini is validating entities, relationships, and evidence.");
   const form = new FormData(); state.files.forEach(file => form.append("files", file));
   try {
-    const result = await api("/api/ingest", { method: "POST", body: form });
+    const result = await api("/api/ingest", { method: "POST", body: form, timeoutMs: 180_000 });
     const failures = result.results.filter(item => item.status === "error");
     const failedNames = new Set(failures.map(item => item.filename));
     state.files = state.files.filter(file => failedNames.has(file.name));

@@ -58,11 +58,12 @@ class GeminiProvider(AIProvider):
             raise MissingAPIKeyError("GEMINI_API_KEY is not configured on the server.")
         import truststore
         from google import genai
+        from google.genai import types
 
         # Use the operating-system trust store without disabling TLS verification.
         # This supports managed Windows environments whose trusted root is not in certifi.
         truststore.inject_into_ssl()
-        self.client = genai.Client(api_key=api_key)
+        self.client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=25_000))
         self.model = model
         self.embedding_model = embedding_model
 

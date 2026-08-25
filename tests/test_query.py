@@ -1,4 +1,4 @@
-from app.ai import local_embedding
+from app.ai import AIProviderError, local_embedding
 from app.service import query_graph
 from conftest import FakeAI
 
@@ -48,4 +48,29 @@ def test_uncited_ai_answer_falls_back_to_verified_excerpts(store):
 
     assert "Verified evidence" in result["answer"]
     assert "[E1]" in result["answer"]
-    assert "no uncited Gemini claims" in result["caveats"][0]
+    assert "extractive fallback" in result["caveats"][0]
+
+
+def test_failed_ai_synthesis_falls_back_to_verified_excerpts(store):
+    document_id = store.add_document(
+        filename="safe.md", artifact_type="markdown", content_hash="safe", title="Safe Study",
+        summary="Safe evidence", raw_text="Safe evidence", embedding=local_embedding("safe evidence"),
+    )
+    entity_id = store.add_entity(
+        entity_type="DOCUMENT", canonical_name="safe study", display_name="Safe Study",
+        description="Safe evidence", confidence=1, embedding=local_embedding("safe evidence"),
+    )
+    store.link_document_entity(document_id, entity_id)
+    store.add_evidence(document_id=document_id, entity_id=entity_id,
+                       excerpt="Verified safe evidence", location="body")
+
+    ai = FakeAI()
+
+    def fail_answer(question, evidence):
+        raise AIProviderError("simulated timeout")
+
+    ai.answer = fail_answer
+    result = query_graph(store, "safe evidence", ai)
+
+    assert "Verified safe evidence" in result["answer"]
+    assert "extractive fallback" in result["caveats"][0]
